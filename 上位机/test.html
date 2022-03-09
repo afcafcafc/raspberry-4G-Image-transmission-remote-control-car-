@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Hello, World</title>
+    <style type="text/css">
+        html{height:100%}
+        body{height:100%;margin:0px;padding:0px}
+        #container{height:100%}
+    </style>
+    <script type="text/javascript" src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=百度地图API的密钥"></script>
+    <script type="text/javascript" src="http://api.map.baidu.com/library/TrackAnimation/src/TrackAnimation_min.js"></script>
+</head>
+
+<body>
+<div id="container"></div>
+<script type="text/javascript">
+    var start=new BMapGL.Point(117.34354133333333, 39.11021133333333);
+    function refresh(a,b) {
+        // alert(a)
+        // alert(b)
+        ordi=new BMapGL.Point(a, b);
+        setTimeout(function(){
+            var convertor = new BMapGL.Convertor();
+            var pointArr = [];
+            pointArr.push(ordi);
+            convertor.translate(pointArr, COORDINATES_WGS84, COORDINATES_BD09, translateCallback)
+        }, 1000);
+    }
+
+    var map = new BMapGL.Map("container");
+    // 创建地图实例
+    var point = new BMapGL.Point(117.35951350118128,39.11285082075573);
+    // 创建点坐标
+    map.centerAndZoom(point, 15);
+    // map.setCenter(point); // 设置地图中心点
+    map.enableScrollWheelZoom(true);
+    translateCallback = function (data){
+        if(data.status === 0) {
+            // map.clearOverlays();
+            map.clearOverlays();
+            map.removeOverlay(marker1);
+            var myIcon = new BMapGL.Icon("car.png", new BMapGL.Size(52, 26));
+            var marker1 = new BMapGL.Marker(data.points[0],{
+                icon: myIcon
+            });
+            start=data.points[0]
+
+            map.addOverlay(marker1);
+
+        }
+    }
+
+
+    var options = {
+        renderOptions:{map: map, autoViewport: true},
+        onSearchComplete: function(results){
+
+                // 获取第一条方案
+                var plan = results.getPlan(0);
+                // 获取方案的驾车线路
+                var route = plan.getRoute(0);
+                // 获取每个关键步骤，并输出到页面
+                var s = [];
+                for (var i = 0; i < route.getNumSteps(); i ++) {
+                    var step = route.getStep(i);
+                    console.log(step);
+
+            }
+        }
+    };
+    map.addEventListener('click', function (e) {
+        // alert('点击位置经纬度：' + e.latlng.lng + ',' + e.latlng.lat);
+        // map.clearOverlays();
+        // var marker = new BMapGL.Marker(new BMapGL.Point(e.latlng.lng,e.latlng.lat));
+        // map.addOverlay(marker);
+        var end=new BMapGL.Point(e.latlng.lng,e.latlng.lat);
+        walking.search(start,end);
+        // walking.search(start,end);
+
+        // alert(walking.getIndex())
+        // console.log(walking.getIndex());
+    });
+    var walking = new BMapGL.WalkingRoute(map,options);
+
+    // var start=new BMapGL.Point(117.35951350118128,39.11285082075573);
+
+
+
+
+    // map.addOverlay(marker);
+
+
+    // 初始化地图，设置中心点坐标和地图级别
+</script>
+</body>
+</html>
