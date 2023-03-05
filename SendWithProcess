@@ -1,0 +1,84 @@
+import socket
+import cv2
+import numpy as np
+import datetime
+import time
+from multiprocessing import Process,Queue,Pipe,freeze_support
+BUFSIZE = 60000
+
+IMAGE_SIZE_X = 640
+IMAGE_SIZE_Y = 480
+pipe=Pipe()
+client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+
+cnt = 0
+def img_send(stringData):
+    ip_port = ('127.0.0.1', 1390)
+    # ip_port = ('150.158.91.167', 3391)
+    client.sendto(stringData, ip_port)
+
+def img_encode(img,i=1,j=1):
+    
+    global cnt
+    cnt+=1
+    if cnt>200:
+        cnt=0
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
+    img_encode = cv2.imencode('.jpg', img,encode_param)[1]
+    data = np.array(img_encode)
+    stringData = data.tostring()
+    length = len(stringData)
+    length_num=length//1400+1
+    print(length,length_num)
+    i=length-(length//100)*100
+    print(i)
+    for k in range(length_num):
+
+        j = length_num
+        if k==length_num-1:
+            img_send(k.to_bytes(1, byteorder='big') + j.to_bytes(1, byteorder='big') + i.to_bytes(1, byteorder='big') + cnt.to_bytes(1, byteorder='big') + stringData[k * 1400:length])
+        else:
+            img_send(k.to_bytes(1, byteorder='big') + j.to_bytes(1, byteorder='big') + i.to_bytes(1, byteorder='big') + cnt.to_bytes(1, byteorder='big')+stringData[k*1400:(k+1)*1400])
+        
+        
+def img_split(img):
+    # for i in range(IMAGE_ROW):
+    #     # print(160 * (i + 1))
+    #     for j in range(IMAGE_COLUMN):
+    #         cv2.imshow('test'+str(i)+' '+str(j),img[j*IMAGE_BASE_SIZE_Y:(j+1)*IMAGE_BASE_SIZE_Y,i*IMAGE_BASE_SIZE_X:(i+1)*IMAGE_BASE_SIZE_X])
+    #         img_encode(img[j*IMAGE_BASE_SIZE_Y:(j+1)*IMAGE_BASE_SIZE_Y,i*IMAGE_BASE_SIZE_X:(i+1)*IMAGE_BASE_SIZE_X],i,j)
+    #         pass
+    img_encode(img, 1, 1)
+def img_cap_process(pipe):
+    
+    cap=cv2.VideoCapture(0)
+    cap.set(3,IMAGE_SIZE_X)
+    cap.set(4,IMAGE_SIZE_Y)
+    cap.set(cv2.CAP_PROP_FPS,10)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    print("Frames per second using video.get(cv2.CAP_PROP_FPS) : {0}".format(fps))
+    cv2.namedWindow("imgt", 0)
+    cv2.resizeWindow("imgt", IMAGE_SIZE_X, IMAGE_SIZE_Y)
+    while True:
+
+        a=datetime.datetime.now()
+        suc, img = cap.read()
+        pipe.send(img)
+        cv2.imshow("imgt",img)
+        if cv2.waitKey(1)&0xff==ord("1"):
+            break
+        print(datetime.datetime.now()-a)
+def img_encode_process(pipe):
+    while True:
+        img=pipe.recv()
+        img_encode(img, 1, 1)
+
+
+if __name__ == '__main__':
+    Process(target=img_encode_process,args=(pipe[1],)).start()
+    Process(target=img_cap_process,args=(pipe[0],)).start()
+    
+
+
+    client.close()
